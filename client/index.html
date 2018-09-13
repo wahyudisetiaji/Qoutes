@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+  <meta charset="utf-8">
+  <title></title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/css/bootstrap.min.css" integrity="sha384-Smlep5jCw/wG7hdkwQ/Z5nLIefveQRIY9nfy6xoR1uRYBtpZgI6339F5dgvm/e9B"
+    crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <link href="css/shop-homepage.css" rel="stylesheet">
+</head>
+
+<body>
+  <div id="app">
+    <div class="navbar bg-dark">
+      <div class="container">
+        <a class="navbar-brand" href="#">Livecode1</a>
+        <div v-if="!token" class="header-right">
+          <input type="text" v-model="email" placeholder="email">
+          <input type="password" v-model="password" placeholder="password">
+          <button @click="login">Login</button>
+        </div>
+        <div v-if="token" class="header-right">
+          <button @click="logout">Logout</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page Content -->
+    <div class="container container-content">
+      <div class="row">
+        <div class="col-lg-3">
+          <div class="list-group">
+            <a href="#" class="list-group-item">All Quotes</a>
+          </div>
+        </div>
+        <!-- /.col-lg-3 -->
+
+        <div class="col-lg-9">
+            <div v-if="success" class="alert alert-success" role="alert">
+                {{success}}
+                <button type="button" @click="clear" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+              </div>
+              <div v-if="error" class="alert alert-danger" role="alert">
+                {{error}}
+                <button type="button" @click="clear" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+              </div>
+          <div class="row">
+            <div class="col-lg-9 col-sm-9 portfolio-item">
+              <form v-if="token">
+                <div class="form-group">
+                  <textarea class="form-control" rows="3" v-model="status" placeholder="Quotes"></textarea>
+                </div>
+                <div class="form-group">
+                  <button type="button" @click="create" class="btn btn-primary">Submit</button>
+                </div>
+              </form>
+            </div>
+          </div>
+          <hr>
+          <div class="row">
+            <div class="col-lg-6 col-sm-6 portfolio-item" v-for="data in qoutes">
+              <div class="card h-70">
+                <div class="card-body">
+                  <h4 class="card-title">
+                    {{data.status}}
+                  </h4>
+                  <a href="#" v-if="user == data.user.email" @click="deleteQoutes(data)">Delete</a> | <a href="#">Translate</a> | <a  v-if="user == data.user.email" @click="oneQoutes(data)" href="#">Edit</a>
+                  <p class="translate font-italic"></p>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+    <!-- /.container -->
+  </div>
+
+
+  <script>
+    var app = new Vue({
+      el: "#app",
+      data: {
+        name: '',
+        email: '',
+        password: '',
+        status: '',
+        token: false,
+        isLogin: '',
+        qoutes: '',
+        user: '',
+        action: '',
+        success: '',
+        error: '',
+        edit: ''
+      },
+      methods: {
+        clear() {
+          this.success = '',
+          this.error = ''
+        },
+        login() {
+          let user = this.email
+          localStorage.setItem('user', user)
+          axios({
+            method: 'POST',
+            url: `http://localhost:3000/users/login`,
+            data: {
+              email: this.email,
+              password: this.password
+            }
+          })
+            .then((result) => {
+              this.action = 'login'
+              this.success = 'Login success !'
+              let token = result.data.token
+              localStorage.setItem('token', token)
+              this.isLogin = token
+
+            })
+            .catch((err) => {
+              this.error = err.response.data.message
+            })
+        },
+
+        logout() {
+          this.action = 'logout'
+          localStorage.clear()
+          this.token = false
+          this.email = ''
+          this.password = ''
+          this.success = 'Logout success !'
+        },
+
+        register() {
+
+        },
+        oneQoutes(){
+          axios({
+            method: 'GET',
+            url: 'http://localhost:3000/qoutes/'
+          })
+            .then((result) => {
+              this.edit = result.data.result
+              
+            })
+            .catch((err) => {
+              console.log(err);
+            });
+        },
+        create() {
+          axios({
+            method: 'POST',
+            url: `http://localhost:3000/qoutes`,
+            headers: {
+              access_token: localStorage.getItem('token')
+            },
+            data: {
+              status: this.status
+            }
+          })
+            .then((result) => {
+              this.action = result
+              this.status = ''
+              this.success = 'create success !'
+            })
+            .catch((err) => {
+              console.log(err);
+            });
+        },
+        deleteQoutes(data) {
+          axios({
+            method: 'DELETE',
+            url: `http://localhost:3000/qoutes/${data._id}`,
+            headers: {
+              access_token: localStorage.getItem('token')
+            }
+          })
+            .then((result) => {
+              this.action = result
+              this.success = 'delete success !'
+            })
+            .catch((err) => {
+              console.log(err);
+            });
+        }
+      },
+      created() {
+        let token = localStorage.getItem('token')
+        let user = localStorage.getItem('user')
+        this.user = user
+        this.isLogin = token
+      },
+      mounted() {
+        axios({
+          method: 'GET',
+          url: 'http://localhost:3000/qoutes'
+        })
+          .then((result) => {
+            this.qoutes = result.data.result
+            
+          })
+          .catch((err) => {
+            console.log(err);
+          });
+      },
+      watch: {
+        success: function() {
+        },
+        error: function() {
+        },
+        isLogin: function (newIslogin, oldisLogin) {
+          if (newIslogin) {
+            this.token = true;
+          }
+        },
+        action: function (newAction, oldAction) {
+          if (newAction) {
+            axios({
+              method: 'GET',
+              url: 'http://localhost:3000/qoutes'
+            })
+              .then((result) => {
+                this.qoutes = result.data.result 
+              })
+              .catch((err) => {
+                console.log(err);
+              });
+          }
+        }
+      }
+
+    })
+  </script>
+
+
+  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+    crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49"
+    crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/js/bootstrap.min.js" integrity="sha384-o+RDsa0aLu++PJvFqy8fFScvbHFLtbvScb8AjopnFD+iEQ7wo/CG0xlczd+2O/em"
+    crossorigin="anonymous"></script>
+
+
+
+</body>
+
+</html>
